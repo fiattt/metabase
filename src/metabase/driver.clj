@@ -283,7 +283,8 @@
     :display-name su/NonBlankString
 
     ;; Type of this property. Defaults to `:string` if unspecified.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password)
+    ;; `:select` is a `String` in the backend.
+    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
     ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
     ;; placeholder.
@@ -295,7 +296,10 @@
     (s/optional-key :placeholder) s/Any
 
     ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool}
+    (s/optional-key :required?) s/Bool
+
+    ;; Any options for `:select` types
+    (s/optional-key :options) {s/Keyword s/Str}}
 
    (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
    "connection details that does not have both default and placeholder"))
@@ -355,7 +359,7 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation aggregations?
+    ;; Does this driver support standard deviation and variance aggregations?
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
@@ -393,7 +397,13 @@
     :inner-join
     :full-join
 
-    :regex})
+    :regex
+
+    ;; Does the driver support advanced math expressions such as log, power, ...
+    :advanced-math-expressions
+
+    ;; Does the driver support percentile calculations (including median)
+    :percentile-aggregations})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -499,7 +509,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod splice-parameters-into-native-query ::driver [_ query]
+(defmethod splice-parameters-into-native-query ::driver
+  [_ query]
   query)
 
 

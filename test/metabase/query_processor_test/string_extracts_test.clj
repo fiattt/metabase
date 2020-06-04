@@ -43,7 +43,9 @@
 (deftest test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red" (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3])))
-    (is (= "ed Medicine" (test-string-extract [:substring [:field-id (data/id :venues :name)] 2])))))
+    (is (= "ed Medicine" (test-string-extract [:substring [:field-id (data/id :venues :name)] 2])))
+    (is (= "Red Medicin" (test-string-extract [:substring [:field-id (data/id :venues :name)]
+                                               1 [:- [:length [:field-id (data/id :venues :name)]] 1]])))))
 
 (deftest test-replacea
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -55,7 +57,9 @@
 
 (deftest test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "foobar" (test-string-extract [:concat "foo" "bar"])))))
+    (is (= "foobar" (test-string-extract [:concat "foo" "bar"])))
+    (testing "Does concat work with >2 args"
+      (is (= "foobar" (test-string-extract [:concat "f" "o" "o" "b" "a" "r"]))))))
 
 (deftest test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)

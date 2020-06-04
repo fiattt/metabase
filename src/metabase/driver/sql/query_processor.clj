@@ -300,12 +300,26 @@
     (hsql/call :count (->honeysql driver field))
     :%count.*))
 
-(defmethod ->honeysql [:sql :avg]      [driver [_ field]] (hsql/call :avg            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :distinct] [driver [_ field]] (hsql/call :distinct-count (->honeysql driver field)))
-(defmethod ->honeysql [:sql :stddev]   [driver [_ field]] (hsql/call :stddev         (->honeysql driver field)))
-(defmethod ->honeysql [:sql :sum]      [driver [_ field]] (hsql/call :sum            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
+(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
+(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver field) (->honeysql driver p)))
+(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver field)))
+(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver field)))
+
+(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver field)))
+(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field)))
+(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field)))
+
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field)))
+(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field)))
+(defmethod ->honeysql [:sql :power] [driver [_ field power]]
+  (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
@@ -512,28 +526,29 @@
 
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _ honeysql-form {aggregations :aggregation}]
-  (let [honeysql-ags (for [ag aggregations]
-                       [(->honeysql driver ag)
-                        (->honeysql driver (hx/identifier
-                                            :field-alias
-                                            (driver/format-custom-field-name driver (annotate/aggregation-name ag))))])]
+  (let [honeysql-ags (vec (for [ag aggregations]
+                            [(->honeysql driver ag)
+                             (->honeysql driver (hx/identifier
+                                                 :field-alias
+                                                 (driver/format-custom-field-name driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
+
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (for [field-clause breakout-fields
-                                         :when (not (contains? (set fields-fields) field-clause))]
-                                     (as driver field-clause)))
+    (apply h/merge-select new-hsql (vec (for [field-clause breakout-fields
+                                              :when        (not (contains? (set fields-fields) field-clause))]
+                                          (as driver field-clause))))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (apply h/merge-select honeysql-form (for [field-clause fields]
-                                          (as driver field-clause unique-name-fn)))))
+    (apply h/merge-select honeysql-form (vec (for [field-clause fields]
+                                               (as driver field-clause unique-name-fn))))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -801,9 +816,8 @@
                  (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 
 (defn- apply-clauses-with-aliased-source-query-table
-  "For queries that have a source query that is a normal MBQL query with a source table, temporarily swap the name of
-  that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
-  referring to Fields belonging to the Table in the source query work normally."
+  "Bind `*table-alias*` which will cause `field-id` and the like to be compiled to SQL that is qualified by that alias
+  rather than their normal table."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (binding [*table-alias* source-query-alias]
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
@@ -816,14 +830,15 @@
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
                       (assoc :fields
-                             (concat
-                              (for [[expression-name expression-definition] expressions]
-                                [:expression-definition
-                                 (name expression-name)
-                                 (mbql.u/replace expression-definition
-                                   [:expression expr] (expressions (keyword expr)))])
-                              (distinct
-                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
+                             (vec
+                              (concat
+                               (for [[expression-name expression-definition] expressions]
+                                 [:expression-definition
+                                  (mbql.u/qualified-name expression-name)
+                                  (mbql.u/replace expression-definition
+                                    [:expression expr] (expressions (keyword expr)))])
+                               (distinct
+                                (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
     (-> query
         ;; TODO -- correctly handle fields in multiple tables with the same name
         (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])

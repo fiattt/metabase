@@ -86,7 +86,7 @@
   [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 5432)
+     (assoc driver.common/default-port-details :placeholder 5432)
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
@@ -160,6 +160,10 @@
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]

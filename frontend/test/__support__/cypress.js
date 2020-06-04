@@ -69,6 +69,7 @@ export function main() {
 }
 
 // Metabase utility functions for navigating the UI
+
 export function selectDashboardFilter(selection, filterName) {
   selection.contains("Select…").click();
   popover()
@@ -76,12 +77,23 @@ export function selectDashboardFilter(selection, filterName) {
     .click({ force: true });
 }
 
+// Metabase utility functions for commonly-used patterns
+
 export function openOrdersTable() {
   cy.visit("/question/new?database=1&table=2");
 }
 
 export function openProductsTable() {
   cy.visit("/question/new?database=1&table=1");
+}
+
+// Find a text field by label text, type it in, then blur the field.
+// Commonly used in our Admin section as we auto-save settings.
+export function typeAndBlurUsingLabel(label, value) {
+  cy.findByLabelText(label)
+    .clear()
+    .type(value)
+    .blur();
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
