@@ -28,70 +28,70 @@ const QueryDownloadWidget = ({
   dashcardId,
   icon,
   params,
-}) => (
-  <PopoverWithTrigger
-    triggerElement={
-      <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={20} />
-      </Tooltip>
-    }
-    triggerClasses={cx(className, "text-brand-hover")}
-    triggerClassesClose={classNameClose}
-  >
-    <Box
-      p={2}
-      w={result.data && result.data.rows_truncated != null ? 300 : 260}
-    >
-      <Box p={1}>
-        <h4>{t`Download full results`}</h4>
-      </Box>
-      {result.data != null && result.data.rows_truncated != null && (
-        <Box px={1}>
-          <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
-          <p>{t`The maximum download size is 1 million rows.`}</p>
-        </Box>
-      )}
-      <Box>
-        {EXPORT_FORMATS.map(type => (
-          <Box key={type} w={"100%"}>
-            {dashcardId && token ? (
-              <DashboardEmbedQueryButton
-                key={type}
-                type={type}
-                dashcardId={dashcardId}
-                token={token}
-                card={card}
-                params={params}
-              />
-            ) : uuid ? (
-              <PublicQueryButton
-                key={type}
-                type={type}
-                uuid={uuid}
-                result={result}
-              />
-            ) : token ? (
-              <EmbedQueryButton key={type} type={type} token={token} />
-            ) : card && card.id ? (
-              <SavedQueryButton
-                key={type}
-                type={type}
-                card={card}
-                result={result}
-              />
-            ) : card && !card.id ? (
-              <UnsavedQueryButton
-                key={type}
-                type={type}
-                card={card}
-                result={result}
-              />
-            ) : null}
-          </Box>
-        ))}
-      </Box>
-    </Box>
-  </PopoverWithTrigger>
+}) => (<Box></Box>
+  // <PopoverWithTrigger
+  //   triggerElement={
+  //     <Tooltip tooltip={t`Download full results`}>
+  //       <Icon title={t`Download this data`} name={icon} size={20} />
+  //     </Tooltip>
+  //   }
+  //   triggerClasses={cx(className, "text-brand-hover")}
+  //   triggerClassesClose={classNameClose}
+  // >
+  //   <Box
+  //     p={2}
+  //     w={result.data && result.data.rows_truncated != null ? 300 : 260}
+  //   >
+  //     <Box p={1}>
+  //       <h4>{t`Download full results`}</h4>
+  //     </Box>
+  //     {result.data != null && result.data.rows_truncated != null && (
+  //       <Box px={1}>
+  //         <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
+  //         <p>{t`The maximum download size is 1 million rows.`}</p>
+  //       </Box>
+  //     )}
+  //     <Box>
+  //       {EXPORT_FORMATS.map(type => (
+  //         <Box key={type} w={"100%"}>
+  //           {dashcardId && token ? (
+  //             <DashboardEmbedQueryButton
+  //               key={type}
+  //               type={type}
+  //               dashcardId={dashcardId}
+  //               token={token}
+  //               card={card}
+  //               params={params}
+  //             />
+  //           ) : uuid ? (
+  //             <PublicQueryButton
+  //               key={type}
+  //               type={type}
+  //               uuid={uuid}
+  //               result={result}
+  //             />
+  //           ) : token ? (
+  //             <EmbedQueryButton key={type} type={type} token={token} />
+  //           ) : card && card.id ? (
+  //             <SavedQueryButton
+  //               key={type}
+  //               type={type}
+  //               card={card}
+  //               result={result}
+  //             />
+  //           ) : card && !card.id ? (
+  //             <UnsavedQueryButton
+  //               key={type}
+  //               type={type}
+  //               card={card}
+  //               result={result}
+  //             />
+  //           ) : null}
+  //         </Box>
+  //       ))}
+  //     </Box>
+  //   </Box>
+  // </PopoverWithTrigger>
 );
 
 const UnsavedQueryButton = ({ type, result: { json_query }, card }) => (
